@@ -188,7 +188,10 @@ export class ExtensionUiController {
 			case "projection.append":
 				return appendAppServerProjection(session.sessionManager, input.envelope);
 			case "projection.read":
-				return readAppServerProjections(session.sessionManager, validateAppServerProjectionAfterRevision(input.afterRevision));
+				return readAppServerProjections(
+					session.sessionManager,
+					validateAppServerProjectionAfterRevision(input.afterRevision),
+				);
 			case "compaction.auto.set":
 				session.setAutoCompactionEnabled(input.on === true);
 				return { changed: true };
