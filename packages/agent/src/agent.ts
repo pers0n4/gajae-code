@@ -1158,6 +1158,8 @@ export class Agent {
 	forceAbort(reason = "Force aborted"): boolean {
 		const runId = this.#activeRunId;
 		const managedLogicalRunId = this.#managedLogicalRunOwner;
+		const logicalRunId = managedLogicalRunId ?? runId;
+		if (logicalRunId !== undefined && this.#terminalizedLogicalRunIds.has(logicalRunId)) return false;
 		const hadActiveRun = runId !== undefined && (this.#runningPrompt !== undefined || this.#state.isStreaming);
 		if (!hadActiveRun) return false;
 
