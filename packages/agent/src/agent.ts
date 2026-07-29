@@ -366,6 +366,7 @@ export class Agent {
 	#resolveRunningPrompt?: () => void;
 	#runSequence = 0;
 	#activeRunId?: number;
+	#activeLogicalRunId?: ManagedLogicalRunId;
 	#activeResourceRunId?: string;
 	#continuationGeneration = 0;
 	#activeFallbackManaged = false;
@@ -1158,7 +1159,7 @@ export class Agent {
 	forceAbort(reason = "Force aborted"): boolean {
 		const runId = this.#activeRunId;
 		const managedLogicalRunId = this.#managedLogicalRunOwner;
-		const logicalRunId = managedLogicalRunId ?? runId;
+		const logicalRunId = this.#activeLogicalRunId ?? managedLogicalRunId ?? runId;
 		if (logicalRunId !== undefined && this.#terminalizedLogicalRunIds.has(logicalRunId)) return false;
 		const hadActiveRun = runId !== undefined && (this.#runningPrompt !== undefined || this.#state.isStreaming);
 		if (!hadActiveRun) return false;
@@ -1177,10 +1178,11 @@ export class Agent {
 		this.#runningPrompt = undefined;
 		this.#resolveRunningPrompt = undefined;
 		this.#activeRunId = undefined;
+		this.#activeLogicalRunId = undefined;
 		this.#activeResourceRunId = undefined;
 		resolve?.();
 		if (this.#activeFallbackManaged) {
-			this.requestRunTerminal(managedLogicalRunId ?? runId, { stopReason: "cancelled" });
+			this.requestRunTerminal(logicalRunId ?? runId, { stopReason: "cancelled" });
 		} else {
 			this.#finalizeRun(runId, { type: "agent_end", messages: [], stopReason: "cancelled" });
 		}
@@ -1370,7 +1372,8 @@ export class Agent {
 		const fallbackManaged = options?.fallbackManaged === true;
 		const managedLogicalRunOwner = fallbackManaged ? (this.#managedLogicalRunOwner ?? runId) : undefined;
 		const startsManagedLogicalRun = fallbackManaged && this.#managedLogicalRunOwner === undefined;
-		this.#activeResourceRunId = String(managedLogicalRunOwner ?? runId);
+		this.#activeLogicalRunId = managedLogicalRunOwner ?? runId;
+		this.#activeResourceRunId = String(this.#activeLogicalRunId);
 		this.resourceLedger.open(this.#activeResourceRunId);
 		options?.onRunAccepted?.();
 		if (startsManagedLogicalRun) {
@@ -1384,6 +1387,7 @@ export class Agent {
 			this.#state.isStreaming = false;
 			this.#abortController = undefined;
 			this.#activeRunId = undefined;
+			this.#activeLogicalRunId = undefined;
 			this.#activeResourceRunId = undefined;
 			this.#runningPrompt = undefined;
 			this.#resolveRunningPrompt = undefined;
@@ -1730,6 +1734,7 @@ export class Agent {
 				this.#state.pendingToolCalls = new Set<string>();
 				this.#abortController = undefined;
 				this.#activeRunId = undefined;
+				this.#activeLogicalRunId = undefined;
 				this.#activeResourceRunId = undefined;
 				this.#activeFallbackManaged = false;
 				this.#resolveRunningPrompt?.();
