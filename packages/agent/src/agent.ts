@@ -1180,7 +1180,7 @@ export class Agent {
 		if (this.#activeFallbackManaged) {
 			this.requestRunTerminal(managedLogicalRunId ?? runId, { stopReason: "cancelled" });
 		} else {
-			this.#finalizeRun(runId, { type: "agent_end", messages: [] });
+			this.#finalizeRun(runId, { type: "agent_end", messages: [], stopReason: "cancelled" });
 		}
 		return true;
 	}

@@ -38,6 +38,8 @@ describe("Agent.forceAbort", () => {
 			initialState: { model: model.model, systemPrompt: ["Test"], tools: [], messages: [] },
 			streamFn,
 		});
+		const events: Array<{ type: string; stopReason?: string }> = [];
+		agent.subscribe(event => events.push(event));
 
 		void agent.prompt("hang before stream");
 		await waitForStreaming(agent);
@@ -45,6 +47,9 @@ describe("Agent.forceAbort", () => {
 		expect(agent.forceAbort("test timeout")).toBe(true);
 		await agent.waitForIdle();
 		expect(agent.state.isStreaming).toBe(false);
+		expect(events.filter(event => event.type === "agent_end")).toEqual([
+			expect.objectContaining({ stopReason: "cancelled" }),
+		]);
 
 		await expect(agent.prompt("next")).resolves.toBeUndefined();
 		expect(model.calls).toHaveLength(1);
