@@ -1500,6 +1500,7 @@ export interface ExtensionContextActions {
 			  ) => Promise<ClientBridgePermissionOutcome>)
 			| undefined,
 	) => void;
+	setSdkClientBridge?: (bridge: ClientBridge | undefined) => void;
 	sdkControl?: (operation: string, input: Record<string, unknown>) => unknown | Promise<unknown>;
 	invokeSkill?: (
 		name: string,
