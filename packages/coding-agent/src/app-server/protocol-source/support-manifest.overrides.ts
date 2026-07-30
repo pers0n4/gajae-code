@@ -388,6 +388,42 @@ export const supportManifestOverrides: Record<string, SupportManifestOverride> =
 		["gitDiffToRemote returns a real tracking-branch diff and notFound for non-git cwd"],
 		"The diff is produced by real git against the tracking branch.",
 	),
+	"environment/info": laneRow(
+		"environmentInfoHandler",
+		"suites/environment-app-handlers.ts",
+		["environment/info reports real platform, version, workspace, and git facts"],
+		"Every reported fact is read from the real runtime, config and git state.",
+	),
+	"environment/status": laneRow(
+		"environmentStatusHandler",
+		"suites/environment-app-handlers.ts",
+		["environment/status reports a ready local environment with the same real workspace state"],
+		"Status reflects the real local environment rather than a fixed value.",
+	),
+	"externalAgentConfig/detect": laneRow(
+		"externalAgentConfigDetectHandler",
+		"suites/environment-app-handlers.ts",
+		["externalAgentConfig/detect reads a real Claude config under the selected home and reports absence"],
+		"Detection reads real external agent configuration from disk.",
+	),
+	"externalAgentConfig/import": laneRow(
+		"externalAgentConfigImportHandler",
+		"suites/environment-app-handlers.ts",
+		["externalAgentConfig/import writes the real MCP destination and records history on disk"],
+		"Import writes the real destination through the existing migration seam.",
+	),
+	"externalAgentConfig/import/readHistories": laneRow(
+		"externalAgentConfigImportReadHistoriesHandler",
+		"suites/environment-app-handlers.ts",
+		["externalAgentConfig/import writes the real MCP destination and records history on disk"],
+		"Histories are read from the real on-disk import history.",
+	),
+	"externalAgentConfig/import/recordHistory": laneRow(
+		"externalAgentConfigImportRecordHistoryHandler",
+		"suites/environment-app-handlers.ts",
+		["externalAgentConfig/import writes the real MCP destination and records history on disk"],
+		"Recording appends to the real on-disk import history.",
+	),
 	// ChatGPT-account-specific surfaces: GJC authenticates per provider and has no account,
 	// credit, workspace-message or account-scoped rate-limit backend to translate.
 	"account/read": unsupported,

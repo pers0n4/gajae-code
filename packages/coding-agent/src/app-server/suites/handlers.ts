@@ -7,6 +7,7 @@
 // dispatcher (no handler registered = notSupported verdict from dispatchClientRequest).
 
 import { commandExecHandlers } from "./command-exec-handlers";
+import { environmentAppHandlers } from "./environment-app-handlers";
 import { fsWatchHandlers } from "./fs-watch-handlers";
 import { goalsReviewHandlers } from "./goals-review-handlers";
 import { hooksHandlers } from "./hooks-handlers";
@@ -195,4 +196,5 @@ export function registerBuiltinHandlers(registry: HandlerRegistry): void {
 	for (const [method, handler] of Object.entries(threadReadHandlers)) registry.register(method, handler);
 	for (const [method, handler] of Object.entries(threadMutationHandlers)) registry.register(method, handler);
 	for (const [method, handler] of Object.entries(workspaceQueryHandlers)) registry.register(method, handler);
+	for (const [method, handler] of Object.entries(environmentAppHandlers)) registry.register(method, handler);
 }
