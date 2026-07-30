@@ -3,10 +3,9 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import packageMetadata from "../../../../package.json" with { type: "json" };
 import { pathToFileURL } from "node:url";
-import { experimentalValidators } from "../../protocol-source/schema-validators.generated";
-import { stableValidators } from "../../protocol-source/schema-validators.generated";
+import packageMetadata from "../../../../package.json" with { type: "json" };
+import { experimentalValidators, stableValidators } from "../../protocol-source/schema-validators.generated";
 import { validators } from "../../protocol-source/validators.generated";
 import {
 	environmentAppHandlers,
@@ -68,7 +67,10 @@ test("environment/info reports real platform, version, workspace, and git facts"
 	const platform = info.platform as Record<string, unknown>;
 	const versions = info.versions as Record<string, unknown>;
 	const workspaceInfo = info.workspace as Record<string, unknown>;
-	const expectedBranch = execFileSync("git", ["branch", "--show-current"], { cwd: workspace, encoding: "utf8" }).trim();
+	const expectedBranch = execFileSync("git", ["branch", "--show-current"], {
+		cwd: workspace,
+		encoding: "utf8",
+	}).trim();
 	const expectedHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: workspace, encoding: "utf8" }).trim();
 
 	expect(platform.os).toBe(process.platform);
@@ -99,7 +101,9 @@ test("externalAgentConfig/detect reads a real Claude config under the selected h
 	);
 	const params = { includeHome: true, migrationSource: "claude-code" };
 	expect(stableValidators.clientRequestParams["externalAgentConfig/detect"]?.(params)).toBe(true);
-	const detected = resultOf(await externalAgentConfigDetectHandler(params)) as { items: Array<Record<string, unknown>> };
+	const detected = resultOf(await externalAgentConfigDetectHandler(params)) as {
+		items: Array<Record<string, unknown>>;
+	};
 	expect(stableValidators.clientRequestResults["externalAgentConfig/detect"]?.(detected)).toBe(true);
 	expect(detected.items).toHaveLength(1);
 	expect(detected.items[0]).toMatchObject({
@@ -136,7 +140,7 @@ test("externalAgentConfig/import writes the real MCP destination and records his
 	});
 	expect(readFileSync(getExternalAgentImportHistoryPath(), "utf8")).toContain(importResult.importId);
 
-	const histories = resultOf(await externalAgentConfigImportReadHistoriesHandler()) as {
+	const histories = resultOf(await externalAgentConfigImportReadHistoriesHandler({})) as {
 		data: Array<Record<string, unknown>>;
 		connectors: unknown[];
 	};
@@ -155,8 +159,10 @@ test("externalAgentConfig/import writes the real MCP destination and records his
 		],
 	});
 	const recordedResult = resultOf(recorded) as { importId: string };
-	expect(stableValidators.clientRequestResults["externalAgentConfig/import/recordHistory"]?.(recordedResult)).toBe(true);
-	const afterRecord = resultOf(await externalAgentConfigImportReadHistoriesHandler()) as {
+	expect(stableValidators.clientRequestResults["externalAgentConfig/import/recordHistory"]?.(recordedResult)).toBe(
+		true,
+	);
+	const afterRecord = resultOf(await externalAgentConfigImportReadHistoriesHandler({})) as {
 		data: Array<Record<string, unknown>>;
 	};
 	expect(afterRecord.data.some(entry => entry.importId === recordedResult.importId)).toBe(true);

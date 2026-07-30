@@ -5,14 +5,14 @@ import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 import { getAgentDir } from "@gajae-code/utils";
 import packageMetadata from "../../../package.json" with { type: "json" };
-import { Settings } from "../../config/settings";
 import { ModelRegistry } from "../../config/model-registry";
+import { Settings } from "../../config/settings";
+import { planMigration } from "../../migrate/action-planner";
 import { getAdapter } from "../../migrate/adapters";
 import { executeActions } from "../../migrate/executor";
-import { planMigration } from "../../migrate/action-planner";
-import { MIGRATE_SOURCES, type AdapterResult, type MigrateAction, type MigrateSource } from "../../migrate/types";
+import { type AdapterResult, MIGRATE_SOURCES, type MigrateAction, type MigrateSource } from "../../migrate/types";
 import { AuthStorage } from "../../session/auth-storage";
-import { branch, head, repo, status as gitStatus } from "../../utils/git";
+import { branch, status as gitStatus, head, repo } from "../../utils/git";
 import type { HandlerResult, MethodHandler } from "./handlers";
 
 type RecordValue = Record<string, unknown>;
@@ -142,10 +142,17 @@ function stringNames(value: unknown, field: string): string[] {
 }
 
 function parseMigrationItem(value: unknown): ParsedMigrationItem | undefined {
-	if (!isRecord(value) || !isMigrationItemType(value.itemType) || typeof value.description !== "string") return undefined;
-	const cwd = value.cwd === undefined || value.cwd === null ? null : typeof value.cwd === "string" ? value.cwd : undefined;
+	if (!isRecord(value) || !isMigrationItemType(value.itemType) || typeof value.description !== "string")
+		return undefined;
+	const cwd =
+		value.cwd === undefined || value.cwd === null ? null : typeof value.cwd === "string" ? value.cwd : undefined;
 	if (cwd === undefined) return undefined;
-	const details = value.details === undefined || value.details === null ? null : isRecord(value.details) ? value.details : undefined;
+	const details =
+		value.details === undefined || value.details === null
+			? null
+			: isRecord(value.details)
+				? value.details
+				: undefined;
 	if (details === undefined) return undefined;
 	const source = details && isMigrateSource(details.source) ? details.source : undefined;
 	const names =
@@ -335,9 +342,21 @@ async function inspectWorkspace(cwd: string): Promise<RecordValue> {
 	try {
 		const repository = await repo.root(cwd);
 		if (!repository) {
-			return { repoRoot: null, branch: null, head: null, clean: null, staged: null, unstaged: null, untracked: null };
+			return {
+				repoRoot: null,
+				branch: null,
+				head: null,
+				clean: null,
+				staged: null,
+				unstaged: null,
+				untracked: null,
+			};
 		}
-		const [branchName, sha, summary] = await Promise.all([branch.current(cwd), head.sha(cwd), gitStatus.summary(cwd)]);
+		const [branchName, sha, summary] = await Promise.all([
+			branch.current(cwd),
+			head.sha(cwd),
+			gitStatus.summary(cwd),
+		]);
 		return {
 			repoRoot: repository,
 			branch: branchName,
@@ -396,7 +415,7 @@ async function nativeAvailability(): Promise<RecordValue> {
 
 async function environmentSnapshot(): Promise<RecordValue> {
 	const cwd = resolveWorkingDirectory();
-	const shellPath = process.platform === "win32" ? process.env.ComSpec ?? "" : process.env.SHELL ?? "";
+	const shellPath = process.platform === "win32" ? (process.env.ComSpec ?? "") : (process.env.SHELL ?? "");
 	const [workspace, providers, nativeModules] = await Promise.all([
 		inspectWorkspace(cwd),
 		inspectProviders(cwd, resolveAgentDirectory()),
@@ -465,15 +484,13 @@ export const externalAgentConfigDetectHandler: MethodHandler = async params => {
 		)
 			return invalidParams();
 	}
-	if (
-		params.maxSessions !== undefined &&
-		params.maxSessions !== null &&
-		!Number.isSafeInteger(params.maxSessions)
-	)
+	if (params.maxSessions !== undefined && params.maxSessions !== null && !Number.isSafeInteger(params.maxSessions))
 		return invalidParams();
 	if (
 		(params.source !== undefined && params.source !== null && typeof params.source !== "string") ||
-		(params.migrationSource !== undefined && params.migrationSource !== null && typeof params.migrationSource !== "string")
+		(params.migrationSource !== undefined &&
+			params.migrationSource !== null &&
+			typeof params.migrationSource !== "string")
 	)
 		return invalidParams();
 	if (!params.includeHome) return { ok: true, result: { items: [] } };
@@ -500,7 +517,9 @@ export const externalAgentConfigDetectHandler: MethodHandler = async params => {
 			}
 		}
 		items.sort((left, right) => left.description.localeCompare(right.description));
-		const limit = params.maxSessions === undefined || params.maxSessions === null ? undefined : params.maxSessions;
+		if (params.maxSessions !== undefined && params.maxSessions !== null && typeof params.maxSessions !== "number")
+			return invalidParams();
+		const limit = typeof params.maxSessions === "number" ? params.maxSessions : undefined;
 		return { ok: true, result: { items: limit === undefined ? items : items.slice(0, limit) } };
 	} catch {
 		return internalError();
@@ -512,7 +531,9 @@ export const externalAgentConfigImportHandler: MethodHandler = async params => {
 	if (
 		(params.source !== undefined && params.source !== null && typeof params.source !== "string") ||
 		(params.providerId !== undefined && params.providerId !== null && typeof params.providerId !== "string") ||
-		(params.migrationSource !== undefined && params.migrationSource !== null && typeof params.migrationSource !== "string")
+		(params.migrationSource !== undefined &&
+			params.migrationSource !== null &&
+			typeof params.migrationSource !== "string")
 	)
 		return invalidParams();
 	const items: ParsedMigrationItem[] = [];
@@ -550,7 +571,8 @@ export const externalAgentConfigImportHandler: MethodHandler = async params => {
 					matchesMigrationItem(candidate, "MCP_SERVER_CONFIG", supportedItems),
 				),
 				skillCandidates: result.skillCandidates.filter(candidate =>
-					matchesMigrationItem(candidate, "SKILLS", supportedItems),
+					// A skill candidate is identified by its slug; the MCP candidate uses `name`.
+					matchesMigrationItem({ source: candidate.source, name: candidate.slug }, "SKILLS", supportedItems),
 				),
 			}));
 			if (filtered.some(result => result.mcpCandidates.length > 0 || result.skillCandidates.length > 0)) {
@@ -581,7 +603,8 @@ export const externalAgentConfigImportHandler: MethodHandler = async params => {
 };
 
 export const externalAgentConfigImportReadHistoriesHandler: MethodHandler = async params => {
-	if (params !== undefined && params !== null && (!isRecord(params) || Object.keys(params).length > 0)) return invalidParams();
+	if (params !== undefined && params !== null && (!isRecord(params) || Object.keys(params).length > 0))
+		return invalidParams();
 	try {
 		return { ok: true, result: { data: await readHistoryRecords(), connectors: [] } };
 	} catch {
