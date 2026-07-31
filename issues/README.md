@@ -47,3 +47,13 @@ Plan + consensus artifacts: `.gjc/plans/ralplan/2026-06-13-1236-71f5/` (`pending
 | [10](10-rpc-no-session-registry.md) | High | `python/gjc-rpc/src/gjc_rpc/client.py` (new module) | No session registry to enumerate/discover/reattach running RPC sessions. |
 | [11](11-docs-rpc-workflow-gate-stale-contradictory.md) | Low | `docs/rpc.md` | The first "Workflow Gate Sub-Protocol" section contradicts the source-of-truth `RpcWorkflowGate` type and the later doc section (options shape, context fields, `gate_id` format). |
 | [12](12-rpc-emit-title-env-var-mismatch.md) | Low | `packages/coding-agent/src/modes/rpc/rpc-mode.ts` | Code reads `PI_RPC_EMIT_TITLE`; docs document `GJC_RPC_EMIT_TITLE`. The documented variable has no effect. |
+
+## Stage 12 residual defect triage (durable goal G010)
+
+| Issue | Disposition | Summary |
+| --- | --- | --- |
+| [22](22-verified-delete-partial-cleanup-evidence.md) | FIX — enforced, coverage proven | The named verified-delete defect does not reproduce at this commit; the typed `cleanup_pending` guarantee is enforced and the test is proven load-bearing by a mutation red→green receipt. |
+| [23](23-broker-child-spawn-environment-block.md) | ENVIRONMENT BLOCK | The sandbox denies the broker child spawn (`spawn_failed`, then `terminal_uncertain`). Labelled honestly; no silent skip. |
+| [24](24-cli-command-surface-missing-app-server.md) | FIXED | The CLI inventory guard did not list the shipped `app-server` command. Red→green receipt included; the guard keeps its exact-list strength. |
+| [25](25-managed-migration-receipt-guards-residual.md) | FIX, owned elsewhere | Two managed-migration guard failures in `session-manager-resume-readonly`: source-identity drift is not rejected, and the wrong fail-closed guard fires on replaced authority. Owned by managed-session storage. |
+| [26](26-stage12-residual-defect-inventory.md) | INVENTORY | All 46 full-suite failures across 23 suites with exact commands, plus the isolation runs that separate real defects from full-run interference and environment blocks. |
