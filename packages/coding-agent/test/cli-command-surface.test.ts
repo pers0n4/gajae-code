@@ -140,6 +140,7 @@ process.exitCode = await child.exited;`;
 			"state",
 			"setup",
 			"acp",
+			"app-server",
 			"skills",
 			"session",
 			"harness",
