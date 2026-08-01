@@ -703,6 +703,8 @@ export interface PromptOptions {
 	toolChoice?: ToolChoice;
 	/** Send as developer/system message instead of user. Providers that support it use the developer role; others fall back to user. */
 	synthetic?: boolean;
+	/** Per-turn developer instructions supplied by an app-server child; injected as non-persistent context. */
+	developerInstructions?: string;
 	/** Explicit billing/initiator attribution for the prompt. Defaults to user prompts as `user` and synthetic prompts as `agent`. */
 	attribution?: MessageAttribution;
 	/** Skip pre-send compaction checks for this prompt (internal use for maintenance flows). */
@@ -7892,6 +7894,15 @@ export class AgentSession {
 						timestamp: Date.now(),
 					}
 				: { role: "user" as const, content: userContent, attribution: promptAttribution, timestamp: Date.now() };
+			const developerInstructionsMessage =
+				options?.developerInstructions && options.developerInstructions.trim().length > 0
+					? ({
+							role: "developer" as const,
+							content: [{ type: "text" as const, text: options.developerInstructions }],
+							attribution: "agent" as const,
+							timestamp: Date.now(),
+						} satisfies AgentMessage)
+					: undefined;
 			if (deepInterviewUserIntentEpoch !== undefined)
 				this.#deepInterviewGenuineUserMessageEpochs.set(message, deepInterviewUserIntentEpoch);
 			await this.refreshGjcSubskillTools();
@@ -7905,7 +7916,13 @@ export class AgentSession {
 			try {
 				await this.#promptWithMessage(message, expandedText, {
 					...options,
-					prependMessages: eagerTodoPrelude ? [eagerTodoPrelude.message] : undefined,
+					prependMessages:
+						developerInstructionsMessage || eagerTodoPrelude
+							? [
+									...(developerInstructionsMessage ? [developerInstructionsMessage] : []),
+									...(eagerTodoPrelude ? [eagerTodoPrelude.message] : []),
+								]
+							: undefined,
 					admissionLease: admission,
 					resetRetryReplaySafety: true,
 				});
@@ -8948,6 +8965,7 @@ export class AgentSession {
 			deliverAs?: "steer" | "followUp";
 			onPreflightAccepted?: () => void;
 			onPreflightAcceptCommit?: () => void | Promise<void>;
+			developerInstructions?: string;
 		},
 	): Promise<void> {
 		this.#assertRecoveryHydrationPromoted();
@@ -9002,6 +9020,7 @@ export class AgentSession {
 			images,
 			onPreflightAccepted: options?.onPreflightAccepted,
 			onPreflightAcceptCommit: options?.onPreflightAcceptCommit,
+			developerInstructions: options?.developerInstructions,
 		});
 	}
 
