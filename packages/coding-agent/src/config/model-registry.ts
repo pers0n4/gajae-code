@@ -256,6 +256,7 @@ interface ProviderValidationConfig {
 	discovery?: ProviderDiscovery;
 	compat?: Model<Api>["compat"];
 	requestTransform?: ModelRequestTransform;
+	customStream?: boolean;
 	disableStrictTools?: boolean;
 	cacheRetention?: CacheRetention;
 	openaiCompat?: { baseUrl: string; apiKey?: string; apiKeyEnv?: string };
@@ -296,7 +297,9 @@ function validateProviderConfiguration(
 				);
 			}
 		}
-	} else {
+	} else if (!config.customStream) {
+		// A `streamSimple` provider carries its own transport, so a base URL and credentials are
+		// meaningless for it; requiring them would only invite a fabricated placeholder URL.
 		if (!config.baseUrl) {
 			throw new Error(`Provider ${providerName}: "baseUrl" is required when defining custom models.`);
 		}
@@ -2694,6 +2697,7 @@ export class ModelRegistry {
 				api: config.api,
 				oauthConfigured: Boolean(config.oauth),
 				requestTransform: config.requestTransform,
+				customStream: Boolean(config.streamSimple),
 				models: (config.models ?? []) as ProviderValidationModel[],
 			},
 			"runtime-register",
