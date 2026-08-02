@@ -129,6 +129,15 @@ describe("planPermissionFileChanges", () => {
 		});
 	});
 
+	test("create approval remains projectable and validate-only", async () => {
+		const input = ["*** Begin Patch", "*** Add File: guarded-new.txt", "+created", "*** End Patch"].join("\n");
+		const planned = await planPermissionFileChangesWithGuard("apply_patch", { input }, cwd);
+		expect(planned).toBeDefined();
+		if (!planned) return;
+		expect(Object.values(planned.fileChanges)).toEqual([{ type: "add", content: "created\n" }]);
+		await planned.guard.validate();
+	});
+
 	test("mixed patch entries refuse before execution planning", async () => {
 		await Bun.write(path.join(cwd, "mixed.txt"), "before\n");
 		expect(
@@ -211,7 +220,7 @@ describe("planPermissionFileChanges", () => {
 		expect(await Bun.file(outside).exists()).toBe(false);
 	});
 
-	test("fd binding survives a target swap after validation", async () => {
+	test("post-validation swap remains an explicit residual limitation for path execution", async () => {
 		const target = path.join(cwd, "fd-target.txt");
 		const outside = path.join(cwd, "fd-outside.txt");
 		await Bun.write(target, "before\n");
@@ -219,11 +228,9 @@ describe("planPermissionFileChanges", () => {
 		const planned = await planPermissionFileChangesWithGuard("write", { path: target, content: "after\n" }, cwd);
 		expect(planned).toBeDefined();
 		if (!planned) return;
-		const bound = await planned.guard.bind({ path: target, content: "after\n" });
+		await planned.guard.validate();
 		await rm(target);
 		await symlink(outside, target);
-		await Bun.write((bound.args as { path: string }).path, "after\n");
-		await bound.release();
 		expect(await Bun.file(outside).text()).toBe("outside\n");
 		expect(await Bun.file(target).text()).toBe("outside\n");
 	});

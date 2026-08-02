@@ -99,7 +99,7 @@ export const supportManifestOverrides: Record<string, SupportManifestOverride> =
 			"packages/coding-agent/src/app-server/thread-runtime/turn-controller.ts; packages/coding-agent/src/app-server/thread-runtime/production-child.ts",
 		semanticGaps: [
 			"ast_edit child mutations are gated by the live reverse permission provider but have no pinned FileChange projection and fail closed.",
-			"Delete/rename/create mutations use lexical tool operations after identity validation; only existing write/edit updates are hardlink-bound, so those operations retain a narrow platform limitation and fail closed on detected identity changes. Existing hardlink aliases are removed on normal release and process exit.",
+			"All path-based mutation execution (write, edit update, single- and multi-file apply_patch, delete, rename, and create) retains a validate-then-path-operation TOCTOU limitation after identity revalidation; final symlinks are refused, canonical approval paths and dev/inode checks are enforced, and detected changes fail closed.",
 		],
 		translationNotes: [
 			"Only nonempty text UserInput entries are admitted; an optional model override is resolved by the retained child and restored after the turn.",

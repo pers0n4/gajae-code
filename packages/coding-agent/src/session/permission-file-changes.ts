@@ -1,6 +1,4 @@
-import { randomUUID } from "node:crypto";
-import { unlinkSync } from "node:fs";
-import { link, lstat, realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import * as nodePath from "node:path";
 
 /** Faithful Codex file-change evidence for permission requests. */
@@ -243,10 +241,7 @@ async function planApplyPatch(args: unknown, cwd: string): Promise<PermissionFil
 	return Object.keys(changes).length > 0 ? changes : undefined;
 }
 
-export type PermissionFileChangeGuard = {
-	validate(): Promise<void>;
-	bind(args: unknown): Promise<{ args: unknown; release(): Promise<void> }>;
-};
+export type PermissionFileChangeGuard = { validate(): Promise<void> };
 
 type PathIdentity = { path: string; exists: boolean; realPath: string; deviceAndInode?: string };
 
@@ -340,60 +335,9 @@ export async function planPermissionFileChangesWithGuard(
 					throw new Error(`Approved mutation target changed before execution: ${expected.path}`);
 			}
 		},
-		async bind(executionArgs: unknown) {
-			await this.validate();
-			const bindable =
-				(toolName === "write" || toolName === "edit") &&
-				identities.length === 1 &&
-				identities[0].exists &&
-				Object.values(fileChanges).every(change => change.type === "update");
-			// Existing write/edit updates are hardlink-bound. Delete/rename/create cannot use this
-			// binding because their tool contracts require lexical unlink/rename/create operations;
-			// identity validation is retained as the narrowest safe fallback and documented in the manifest.
-			if (!bindable) {
-				if (Object.values(fileChanges).some(change => change.type === "add"))
-					throw new Error(
-						`Approved mutation target cannot be bound for creation: ${identities[0]?.path ?? toolName}`,
-					);
-				return { args: executionArgs, release: async () => {} };
-			}
-			const expected = identities[0];
-			if (!isRecord(executionArgs) || typeof executionArgs.path !== "string")
-				throw new Error(`Approved mutation target cannot be bound: ${expected.path}`);
-			const boundPath = nodePath.join(nodePath.dirname(expected.realPath), `.gjc-approval-${randomUUID()}`);
-			let cleaned = false;
-			const cleanup = () => {
-				if (cleaned) return;
-				cleaned = true;
-				try {
-					unlinkSync(boundPath);
-				} catch {
-					// The target may already have cleaned up the hardlink.
-				}
-			};
-			try {
-				// Random same-directory link creation is atomic and exclusive; verify the resulting inode
-				// after creation to reject a source swap during link(). The exit hook handles process exits.
-				await link(expected.path, boundPath);
-				process.once("exit", cleanup);
-				const boundStat = await lstat(boundPath);
-				if (identityKey(boundStat) !== expected.deviceAndInode) {
-					throw new Error(`Approved mutation target changed before execution: ${expected.path}`);
-				}
-				return {
-					args: { ...executionArgs, path: boundPath },
-					release: async () => {
-						cleanup();
-						process.removeListener("exit", cleanup);
-					},
-				};
-			} catch (error) {
-				cleanup();
-				process.removeListener("exit", cleanup);
-				throw error;
-			}
-		},
 	};
+	// Identity revalidation narrows, but does not eliminate, the validate-then-path-operation TOCTOU
+	// for write, edit update, single-/multi-file apply_patch, delete, rename, and create.
 	return { fileChanges: resolvedFileChanges, guard };
 }
 
